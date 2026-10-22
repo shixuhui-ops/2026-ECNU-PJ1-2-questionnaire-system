@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库与题目版本管理</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            color: #243247;
+            background: #f5f7fb;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        a {
+            color: #245ec7;
+        }
+
+        section {
+            background: white;
+            border: 1px solid #dce2eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0;
+        }
+
+        input,
+        textarea,
+        select {
+            display: block;
+            width: 100%;
+            max-width: 620px;
+            padding: 9px;
+            margin-top: 6px;
+            border: 1px solid #b9c4d4;
+            border-radius: 5px;
+            font: inherit;
+        }
+
+        button {
+            padding: 9px 15px;
+            margin: 5px 8px 5px 0;
+            border: 1px solid #245ec7;
+            border-radius: 5px;
+            background: #245ec7;
+            color: white;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: default;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e1e6ee;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .muted {
+            color: #617086;
+        }
+
+        .error {
+            color: #b42318;
+        }
+
+        .success {
+            color: #16713c;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        #message {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>题库与题目版本管理</h1>
+    <nav>
+        <a href="./index.html">返回首页</a>
+        <a href="./manage.html">管理问卷</a>
+        <a href="./fill.html">填写问卷</a>
+        <a href="./stats.html">查看统计</a>
+    </nav>
+
+    <p id="message" role="status" aria-live="polite"></p>
+
+    <section id="loginNotice" hidden>
+        <h2>请先登录</h2>
+        <p>登录后可以管理自己的题库，并使用其他用户共享的题目。</p>
+        <a href="./index.html">前往登录</a>
+    </section>
+
+    <main id="workspace" hidden>
+        <section>
+            <h2>创建题库</h2>
+            <form id="createBankForm">
+                <label>
+                    题库名称
+                    <input id="bankName" maxlength="200" required>
+                </label>
+                <label>
+                    题库说明
+                    <textarea id="bankDescription" maxlength="2000" rows="3"></textarea>
+                </label>
+                <button type="submit">创建题库</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>可访问的题库</h2>
+            <p class="muted">包含自己的题库和其他用户共享的题库。</p>
+            <button id="refreshBanksButton" type="button">刷新列表</button>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">名称</th>
+                            <th scope="col">说明</th>
+                            <th scope="col">题目版本数量</th>
+                            <th scope="col">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bankList"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="bankDetailSection" hidden>
+            <h2 id="selectedBankTitle">题库详情</h2>
+            <p id="selectedBankDescription"></p>
+            <div id="bankActions"></div>
+            <div id="bankQuestions"></div>
+        </section>
+
+        <section id="questionSection">
+            <h2>独立题目与版本</h2>
+            <p class="muted">
+                题目可以独立保存，再加入题库或选入问卷。
+                修改题目会创建新版本，已发布问卷保留原来的题目快照。
+            </p>
+            <div id="questionEditor"></div>
+            <div id="questionList"></div>
+        </section>
+
+        <section id="versionDetailSection" hidden>
+            <h2>题目版本详情</h2>
+            <div id="versionDetail"></div>
+        </section>
+    </main>
+
+    <script src="./question-bank.js"></script>
+</body>
+
+</html>

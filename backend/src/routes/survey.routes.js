@@ -2,117 +2,12 @@ const express = require("express");
 const crypto = require("crypto");
 const Survey = require("../models/survey.model");
 const requireAuth = require("../middleware/auth.middleware");
+const validateQuestion = require("../utils/question-validation");
 
 const router = express.Router();
 
 function createAccessCode() {
     return crypto.randomBytes(6).toString("hex");
-}
-
-function validateQuestion(question) {
-    const allowedTypes = ["single", "multiple", "text", "number"];
-
-    if (!allowedTypes.includes(question.type)) {
-        return "题目类型无效";
-    }
-
-    if (!String(question.title || "").trim()) {
-        return "题目标题不能为空";
-    }
-
-    if (["single", "multiple"].includes(question.type)) {
-        if (!Array.isArray(question.options) || question.options.length < 2) {
-            return "单选题和多选题至少需要两个选项";
-        }
-
-        if (question.options.some((item) => !String(item.label || "").trim())) {
-            return "选项内容不能为空";
-        }
-        const optionValues = question.options.map((item) =>
-            String(item.value || "").trim()
-        );
-
-        if (optionValues.some((value) => !value)) {
-            return "选项值不能为空";
-        }
-
-        if (new Set(optionValues).size !== optionValues.length) {
-            return "选项值不能重复";
-        }
-    }
-    const validation = question.validation || {};
-
-    if (question.type === "multiple") {
-        const { minSelections, maxSelections, exactSelections } = validation;
-        const selectionLimits = [
-            ["最少选择数", minSelections],
-            ["最多选择数", maxSelections],
-            ["固定选择数", exactSelections]
-        ];
-
-        for (const [name, value] of selectionLimits) {
-            if (value == null) {
-                continue;
-            }
-
-            if (!Number.isInteger(value) || value < 0) {
-                return `${name}必须是大于等于0的整数`;
-            }
-
-            if (value > question.options.length) {
-                return `${name}不能大于选项总数`;
-            }
-        }
-
-        if (
-            minSelections != null &&
-            maxSelections != null &&
-            minSelections > maxSelections
-        ) {
-            return "最少选择数不能大于最多选择数";
-        }
-
-        if (
-            exactSelections != null &&
-            minSelections != null &&
-            exactSelections < minSelections
-        ) {
-            return "固定选择数不能小于最少选择数";
-        }
-
-        if (
-            exactSelections != null &&
-            maxSelections != null &&
-            exactSelections > maxSelections
-        ) {
-            return "固定选择数不能大于最多选择数";
-        }
-    }
-
-    if (question.type === "text") {
-        const { minLength, maxLength } = validation;
-
-        if (
-            minLength != null &&
-            maxLength != null &&
-            minLength > maxLength
-        ) {
-            return "最小文本长度不能大于最大文本长度";
-        }
-    }
-
-    if (question.type === "number") {
-        const { minValue, maxValue } = validation;
-
-        if (
-            minValue != null &&
-            maxValue != null &&
-            minValue > maxValue
-        ) {
-            return "最小值不能大于最大值";
-        }
-    }
-    return null;
 }
 
 function isOwner(survey, userId) {

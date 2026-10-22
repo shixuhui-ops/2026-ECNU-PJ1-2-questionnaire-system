@@ -14,19 +14,19 @@ API 基础地址：
 http://localhost:3000/api
 ```
 
-需要身份认证的接口使用：
-
-```http
-Authorization: Bearer <JWT_TOKEN>
-```
-
-请求 JSON 接口时需要设置：
+请求 JSON 数据时使用：
 
 ```http
 Content-Type: application/json
 ```
 
-统一响应格式：
+需要登录的接口使用 JWT：
+
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
+
+成功响应通常采用：
 
 ```json
 {
@@ -36,7 +36,7 @@ Content-Type: application/json
 }
 ```
 
-失败响应格式：
+失败响应采用：
 
 ```json
 {
@@ -45,17 +45,29 @@ Content-Type: application/json
 }
 ```
 
+常见状态码：
+
+| 状态码 | 含义 |
+|---:|---|
+| `200` | 请求成功 |
+| `201` | 创建成功 |
+| `400` | 请求参数或业务状态错误 |
+| `401` | 未登录、Token 无效或已过期 |
+| `404` | 资源不存在或当前用户无权访问 |
+| `409` | 数据冲突 |
+| `500` | 服务器内部错误 |
+
 ---
 
 ## 2. 健康检查
 
-### 检查服务状态
+### 2.1 检查服务状态
 
 ```http
 GET /api/health
 ```
 
-无需认证。
+无需登录。
 
 成功响应：
 
@@ -68,15 +80,13 @@ GET /api/health
 
 ---
 
-## 3. 用户认证接口
+## 3. 用户认证
 
 ### 3.1 用户注册
 
 ```http
 POST /api/auth/register
 ```
-
-无需认证。
 
 请求：
 
@@ -87,12 +97,12 @@ POST /api/auth/register
 }
 ```
 
-字段说明：
+字段规则：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
-| `username` | String | 是 | 长度为 3 到 30 个字符 |
-| `password` | String | 是 | 长度不能少于 6 个字符 |
+| `username` | String | 是 | 长度为 3～30 个字符 |
+| `password` | String | 是 | 长度不少于 6 个字符 |
 
 成功响应：
 
@@ -115,19 +125,14 @@ POST /api/auth/register
 | 状态码 | 说明 |
 |---:|---|
 | `201` | 注册成功 |
-| `400` | 用户名或密码格式不符合要求 |
+| `400` | 用户名或密码格式错误 |
 | `409` | 用户名已存在 |
-| `500` | 注册失败 |
-
----
 
 ### 3.2 用户登录
 
 ```http
 POST /api/auth/login
 ```
-
-无需认证。
 
 请求：
 
@@ -160,13 +165,12 @@ POST /api/auth/login
 |---:|---|
 | `200` | 登录成功 |
 | `401` | 用户名或密码错误 |
-| `500` | 登录失败 |
 
 ---
 
-## 4. 问卷管理接口
+## 4. 问卷管理
 
-除公开接口外，以下接口都需要 JWT 认证。
+除公开访问接口外，本节接口均需要 JWT。
 
 ### 4.1 创建问卷
 
@@ -178,9 +182,10 @@ POST /api/surveys
 
 ```json
 {
-  "title": "学生信息调查问卷",
-  "description": "用于收集学生基本信息",
+  "title": "学生信息调查",
+  "description": "课程调查问卷",
   "allowAnonymous": true,
+  "allowMultipleSubmissions": false,
   "deadline": "2026-12-31T23:59:00.000Z"
 }
 ```
@@ -191,41 +196,11 @@ POST /api/surveys
 |---|---|---:|---|
 | `title` | String | 是 | 问卷标题 |
 | `description` | String | 否 | 问卷说明 |
-| `allowAnonymous` | Boolean | 否 | 是否允许匿名填写，默认 `false` |
-| `deadline` | Date | 否 | 截止时间，可以为空 |
+| `allowAnonymous` | Boolean | 否 | 是否允许匿名填写 |
+| `allowMultipleSubmissions` | Boolean | 否 | 是否允许同一用户重复填写，默认 `true` |
+| `deadline` | Date/null | 否 | 截止时间 |
 
-创建成功后，问卷状态为 `draft`，系统自动生成唯一访问码。
-
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "ownerId": "用户ID",
-    "title": "学生信息调查问卷",
-    "description": "用于收集学生基本信息",
-    "accessCode": "2b5ddbf18f84",
-    "allowAnonymous": true,
-    "status": "draft",
-    "deadline": null,
-    "questions": [],
-    "jumpRules": []
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `201` | 创建成功 |
-| `400` | 标题、匿名配置或截止时间格式错误 |
-| `401` | 未登录 |
-| `500` | 创建失败 |
-
----
+成功后问卷状态为 `draft`，系统自动生成访问码。
 
 ### 4.2 查看我的问卷
 
@@ -233,34 +208,7 @@ POST /api/surveys
 GET /api/surveys/mine
 ```
 
-只返回当前登录用户创建的问卷。
-
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "_id": "问卷ID",
-      "title": "学生信息调查问卷",
-      "status": "draft",
-      "accessCode": "2b5ddbf18f84",
-      "questions": []
-    }
-  ]
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 查询成功 |
-| `401` | 未登录 |
-| `500` | 查询失败 |
-
----
+只返回当前用户创建的问卷。
 
 ### 4.3 查看问卷详情
 
@@ -270,93 +218,25 @@ GET /api/surveys/:id
 
 只能查看自己创建的问卷。
 
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "ownerId": "用户ID",
-    "title": "学生信息调查问卷",
-    "description": "问卷说明",
-    "accessCode": "2b5ddbf18f84",
-    "allowAnonymous": true,
-    "status": "draft",
-    "deadline": null,
-    "questions": [],
-    "jumpRules": []
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 查询成功 |
-| `400` | 问卷 ID 无效 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
-
----
-
 ### 4.4 修改问卷
 
 ```http
 PATCH /api/surveys/:id
 ```
 
-只能修改自己创建且未关闭的问卷。
-
 请求示例：
 
 ```json
 {
-  "title": "修改后的问卷标题",
-  "description": "修改后的问卷说明",
+  "title": "修改后的标题",
+  "description": "修改后的说明",
   "allowAnonymous": false,
-  "deadline": "2026-12-31T23:59:00.000Z"
-}
-```
-
-允许修改的字段：
-
-- `title`
-- `description`
-- `allowAnonymous`
-- `deadline`
-
-清除截止时间：
-
-```json
-{
+  "allowMultipleSubmissions": true,
   "deadline": null
 }
 ```
 
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "title": "修改后的问卷标题"
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 修改成功 |
-| `400` | 参数格式错误或问卷已关闭 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
-
----
+只有问卷所有者可以修改。
 
 ### 4.5 添加题目
 
@@ -364,78 +244,77 @@ PATCH /api/surveys/:id
 POST /api/surveys/:id/questions
 ```
 
-只有草稿状态的问卷可以添加题目。
+只有草稿问卷可以添加题目。
 
-#### 单选题
+#### 单选题示例
 
 ```json
 {
   "type": "single",
-  "title": "你的性别",
+  "title": "你的年级",
   "description": "请选择一个选项",
   "required": true,
   "options": [
     {
-      "label": "男",
-      "value": "male"
+      "label": "大一",
+      "value": "freshman"
     },
     {
-      "label": "女",
-      "value": "female"
+      "label": "大二",
+      "value": "sophomore"
     }
   ]
 }
 ```
 
-#### 多选题
+#### 多选题示例
 
 ```json
 {
   "type": "multiple",
-  "title": "你喜欢的水果",
+  "title": "你使用过哪些数据库",
   "required": true,
   "options": [
     {
-      "label": "苹果",
-      "value": "apple"
+      "label": "MySQL",
+      "value": "mysql"
     },
     {
-      "label": "香蕉",
-      "value": "banana"
+      "label": "MongoDB",
+      "value": "mongodb"
     },
     {
-      "label": "西瓜",
-      "value": "watermelon"
+      "label": "PostgreSQL",
+      "value": "postgresql"
     }
   ],
   "validation": {
     "minSelections": 1,
-    "maxSelections": 2,
-    "exactSelections": null
+    "maxSelections": 2
   }
 }
 ```
 
-#### 文本填空题
+#### 文本题示例
 
 ```json
 {
   "type": "text",
-  "title": "请进行自我介绍",
-  "required": true,
+  "title": "请填写建议",
+  "required": false,
   "validation": {
     "minLength": 2,
-    "maxLength": 100
+    "maxLength": 200
   }
 }
 ```
 
-#### 数字填空题
+#### 数字题示例
 
 ```json
 {
   "type": "number",
-  "title": "请输入年龄",
+  "title": "你的年龄",
   "required": true,
   "validation": {
     "minValue": 0,
@@ -445,47 +324,24 @@ POST /api/surveys/:id/questions
 }
 ```
 
-支持的题目类型：
+支持的题型：
 
 | 类型 | 说明 |
 |---|---|
 | `single` | 单选题 |
 | `multiple` | 多选题 |
-| `text` | 文本填空题 |
-| `number` | 数字填空题 |
+| `text` | 文本题 |
+| `number` | 数字题 |
 
-成功响应：
+第二阶段增加的来源字段：
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "题目ID",
-    "type": "single",
-    "title": "你的性别",
-    "required": true,
-    "order": 0,
-    "options": [
-      {
-        "_id": "选项ID",
-        "label": "男",
-        "value": "male"
-      }
-    ]
-  }
+  "sourceQuestionVersionId": "来源题目版本ID或null"
 }
 ```
 
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `201` | 添加成功 |
-| `400` | 题目配置错误 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
-
----
+直接在问卷中创建的题目，其来源字段为 `null`；从题目版本选入的题目会保存对应版本 ID。
 
 ### 4.6 添加跳转规则
 
@@ -500,52 +356,22 @@ POST /api/surveys/:id/jump-rules
   "sourceQuestionId": "源题目ID",
   "targetQuestionId": "目标题目ID",
   "operator": "equals",
-  "expectedValue": "male"
+  "expectedValue": "freshman"
 }
 ```
-
-字段说明：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `sourceQuestionId` | ObjectId | 触发跳转的题目 |
-| `targetQuestionId` | ObjectId | 跳转目标题目 |
-| `operator` | String | 判断运算符 |
-| `expectedValue` | Mixed | 期望答案 |
 
 支持的运算符：
 
-| 运算符 | 适用题型 | 说明 |
-|---|---|---|
-| `equals` | 单选、数字等 | 等于 |
-| `contains` | 多选 | 包含某个选项 |
-| `greaterThan` | 数字 | 大于 |
-| `lessThan` | 数字 | 小于 |
-| `greaterOrEqual` | 数字 | 大于等于 |
-| `lessOrEqual` | 数字 | 小于等于 |
+| 运算符 | 适用场景 |
+|---|---|
+| `equals` | 单选或普通相等判断 |
+| `contains` | 多选题包含判断 |
+| `gt` | 数字大于 |
+| `gte` | 数字大于等于 |
+| `lt` | 数字小于 |
+| `lte` | 数字小于等于 |
 
-示例：单选题选择 `male` 时跳转到指定题目。
-
-```json
-{
-  "sourceQuestionId": "题目1ID",
-  "targetQuestionId": "题目5ID",
-  "operator": "equals",
-  "expectedValue": "male"
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `201` | 添加成功 |
-| `400` | 题目不存在、题型不匹配或跳转到自身 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
-| `409` | 相同跳转规则已经存在 |
-
----
+系统拒绝自跳转、重复规则和与题型不匹配的规则。
 
 ### 4.7 发布问卷
 
@@ -553,39 +379,7 @@ POST /api/surveys/:id/jump-rules
 POST /api/surveys/:id/publish
 ```
 
-发布条件：
-
-- 问卷至少包含一道题目
-- 截止时间为空，或晚于当前时间
-- 当前用户是问卷创建者
-
-成功响应：
-
-```json
-{
-  "success": true,
-  "message": "问卷发布成功",
-  "data": {
-    "accessUrl": "/survey/2b5ddbf18f84",
-    "survey": {
-      "_id": "问卷ID",
-      "status": "published",
-      "accessCode": "2b5ddbf18f84"
-    }
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 发布成功 |
-| `400` | 没有题目或截止时间无效 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
-
----
+问卷至少包含一道题目后才能发布。问卷发布后不能继续添加题目。
 
 ### 4.8 关闭问卷
 
@@ -593,189 +387,55 @@ POST /api/surveys/:id/publish
 POST /api/surveys/:id/close
 ```
 
-只能由问卷创建者操作。
-
-成功响应：
-
-```json
-{
-  "success": true,
-  "message": "问卷已关闭",
-  "data": {
-    "_id": "问卷ID",
-    "status": "closed"
-  }
-}
-```
-
-关闭后：
-
-- 问卷不能继续提交
-- 问卷不能继续修改
-- 公开访问接口不再返回问卷
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 关闭成功 |
-| `400` | 关闭失败 |
-| `401` | 未登录 |
-| `404` | 问卷不存在或无权访问 |
+关闭后不能继续提交回答。
 
 ---
 
-## 5. 公开填写接口
+## 5. 公开访问问卷
 
-以下接口不需要创建者权限。
-
-### 5.1 获取公开问卷
+### 5.1 根据访问码获取公开问卷
 
 ```http
 GET /api/surveys/public/:accessCode
 ```
 
-只有状态为 `published` 且未超过截止时间的问卷可以访问。
+公开问卷必须处于 `published` 状态，且未超过截止时间。
 
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "title": "学生信息调查问卷",
-    "description": "问卷说明",
-    "accessCode": "2b5ddbf18f84",
-    "allowAnonymous": true,
-    "status": "published",
-    "deadline": null,
-    "questions": [
-      {
-        "_id": "题目ID",
-        "type": "single",
-        "title": "你的性别",
-        "required": true,
-        "order": 0,
-        "options": [
-          {
-            "_id": "选项ID",
-            "label": "男",
-            "value": "male"
-          }
-        ]
-      }
-    ],
-    "jumpRules": []
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 获取成功 |
-| `400` | 问卷已超过截止时间 |
-| `404` | 问卷不存在、未发布或已关闭 |
-
----
-
-### 5.2 获取下一道题
+### 5.2 获取下一道题目
 
 ```http
 POST /api/surveys/public/:accessCode/next-question
 ```
 
-请求：
+请求示例：
 
 ```json
 {
-  "currentQuestionId": "当前题目ID",
-  "answers": [
-    {
-      "questionId": "当前题目ID",
-      "value": "male"
-    }
-  ]
+  "questionId": "当前题目ID",
+  "value": "freshman"
 }
 ```
 
-如果当前题目匹配跳转规则，则返回跳转目标题目；否则返回顺序上的下一题。
-
-成功响应：
-
-```json
-{
-  "success": true,
-  "data": {
-    "completed": false,
-    "question": {
-      "_id": "下一题ID",
-      "type": "number",
-      "title": "请输入年龄",
-      "required": true,
-      "order": 1
-    }
-  }
-}
-```
-
-问卷填写完成时：
-
-```json
-{
-  "success": true,
-  "data": {
-    "completed": true,
-    "question": null
-  }
-}
-```
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 计算成功 |
-| `400` | 问卷已过期或计算失败 |
-| `404` | 问卷不存在或未发布 |
+后端根据题目答案和跳转规则返回下一道题。
 
 ---
 
-### 5.3 提交问卷
+## 6. 回答提交
+
+### 6.1 提交问卷
 
 ```http
 POST /api/responses/:accessCode
 ```
 
-如果问卷允许匿名填写，可以不携带 JWT。
-
-如果问卷不允许匿名填写，必须携带：
-
-```http
-Authorization: Bearer <JWT_TOKEN>
-```
-
 请求：
 
 ```json
 {
   "answers": [
     {
-      "questionId": "单选题ID",
-      "value": "male"
-    },
-    {
-      "questionId": "多选题ID",
-      "value": [
-        "apple",
-        "banana"
-      ]
-    },
-    {
-      "questionId": "文本题ID",
-      "value": "这是一段文本答案"
+      "questionId": "题目ID",
+      "value": "freshman"
     },
     {
       "questionId": "数字题ID",
@@ -785,494 +445,632 @@ Authorization: Bearer <JWT_TOKEN>
 }
 ```
 
-提交时会检查：
+校验内容包括：
 
-- 问卷是否存在并已发布
-- 问卷是否超过截止时间
-- 是否满足匿名填写权限
-- 必答题是否填写
-- 单选答案是否有效
-- 多选答案是否为数组
-- 多选答案是否重复
-- 多选答案数量是否符合限制
-- 文本长度是否符合限制
-- 数字是否有效
-- 数字是否符合范围
-- 数字是否满足整数要求
-- 跳过的题目不参与必答校验
+- 问卷必须已发布
+- 问卷不能已关闭
+- 不能超过截止时间
+- 非匿名问卷必须登录
+- 题目 ID 必须存在于问卷中
+- 同一道题不能重复提交答案
+- 实际回答路径上的必答题必须填写
+- 答案必须符合题型和校验规则
+- 禁止重复填写时，同一登录用户只能提交一次
 
-成功响应：
-
-```json
-{
-  "success": true,
-  "message": "问卷提交成功",
-  "data": {
-    "responseId": "回答记录ID",
-    "submittedAt": "2026-10-17T10:00:00.000Z"
-  }
-}
-```
-
-状态码：
+可能返回：
 
 | 状态码 | 说明 |
 |---:|---|
 | `201` | 提交成功 |
-| `400` | 答案校验失败、问卷已过期或提交失败 |
-| `401` | 需要登录、Token 无效或已过期 |
-| `404` | 问卷不存在或未发布 |
+| `400` | 答案格式或校验失败 |
+| `401` | 问卷不允许匿名且用户未登录 |
+| `404` | 访问码无效 |
+| `409` | 当前用户已经提交过该问卷 |
 
 ---
 
-## 6. 统计接口
+## 7. 单份问卷统计
 
-### 6.1 查看问卷统计
+### 7.1 查询问卷统计
 
 ```http
 GET /api/stats/:surveyId
 ```
 
-只有问卷创建者可以查看统计结果。
+需要 JWT，且只有问卷所有者可以查看。
 
-请求头：
+统计内容包括：
+
+- 回答总数
+- 单选题各选项数量
+- 多选题各选项选择次数
+- 文本题回答内容
+- 数字题回答值和平均值
+
+---
+
+## 8. 题库管理
+
+本节所有接口均需要 JWT。
+
+题库访问规则：
+
+- 题库所有者可以查看和管理题库。
+- 被共享用户可以查看题库和使用其中的题目。
+- 被共享用户不能修改题库。
+- 题库共享同时允许接收者访问题库当前和以后包含的题目版本。
+
+### 8.1 创建题库
 
 ```http
-Authorization: Bearer <JWT_TOKEN>
+POST /api/question-banks
 ```
 
-成功响应：
+请求：
 
 ```json
 {
-  "success": true,
-  "data": {
-    "surveyId": "问卷ID",
-    "title": "学生信息调查问卷",
-    "totalResponses": 10,
-    "statistics": [
-      {
-        "questionId": "题目ID",
-        "title": "你的性别",
-        "type": "single",
-        "totalAnswers": 10,
-        "options": {
-          "male": {
-            "label": "男",
-            "count": 6
-          },
-          "female": {
-            "label": "女",
-            "count": 4
-          }
-        }
-      },
-      {
-        "questionId": "题目ID",
-        "title": "你喜欢的水果",
-        "type": "multiple",
-        "totalAnswers": 8,
-        "options": {
-          "apple": {
-            "label": "苹果",
-            "count": 5
-          },
-          "banana": {
-            "label": "香蕉",
-            "count": 4
-          }
-        }
-      },
-      {
-        "questionId": "题目ID",
-        "title": "请输入年龄",
-        "type": "number",
-        "totalAnswers": 10,
-        "average": 20.5,
-        "values": [
-          18,
-          19,
-          20,
-          25
-        ]
-      },
-      {
-        "questionId": "题目ID",
-        "title": "自我介绍",
-        "type": "text",
-        "totalAnswers": 8,
-        "values": [
-          "文本答案一",
-          "文本答案二"
-        ]
-      }
-    ]
-  }
+  "name": "学生信息题库",
+  "description": "保存可复用的学生信息题目"
 }
 ```
 
-统计内容：
-
-- 单选题：每个选项的选择数量
-- 多选题：每个选项被选择的次数
-- 数字题：有效回答数、平均值、全部数字
-- 文本题：有效回答数、全部文本内容
-- 整份问卷：总提交次数
-
-状态码：
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 查询成功 |
-| `400` | 问卷 ID 无效或查询失败 |
-| `401` | 未登录或 Token 无效 |
-| `404` | 问卷不存在或当前用户不是创建者 |
-
----
-
-## 7. 数据模型概览
-
-### 7.1 users 集合
-
-```json
-{
-  "_id": "ObjectId",
-  "username": "testuser",
-  "passwordHash": "bcrypt_hash",
-  "createdAt": "Date",
-  "updatedAt": "Date"
-}
-```
-
-### 7.2 surveys 集合
-
-```json
-{
-  "_id": "ObjectId",
-  "ownerId": "ObjectId",
-  "title": "问卷标题",
-  "description": "问卷说明",
-  "accessCode": "访问码",
-  "allowAnonymous": true,
-  "status": "draft",
-  "deadline": null,
-  "questions": [],
-  "jumpRules": [],
-  "createdAt": "Date",
-  "updatedAt": "Date"
-}
-```
-
-`status` 支持：
-
-- `draft`：草稿
-- `published`：已发布
-- `closed`：已关闭
-
-### 7.3 responses 集合
-
-```json
-{
-  "_id": "ObjectId",
-  "surveyId": "ObjectId",
-  "respondentId": null,
-  "anonymous": true,
-  "answers": [
-    {
-      "questionId": "ObjectId",
-      "value": "答案"
-    }
-  ],
-  "submittedAt": "Date",
-  "createdAt": "Date",
-  "updatedAt": "Date"
-}
-```
-
----
-
-## 8. 启动方式
-
-### 8.1 启动 MongoDB
-
-在项目根目录执行：
-
-```powershell
-mongod --dbpath .\backend\data\db
-```
-
-如果 `mongod` 不在系统环境变量中：
-
-```powershell
-& "D:\MongoDB\bin\mongod.exe" --dbpath .\backend\data\db
-```
-
-### 8.2 启动后端
-
-```powershell
-Set-Location .\backend
-node src/server.js
-```
-
-后端地址：
-
-```text
-http://localhost:3000
-```
-
-### 8.3 启动前端
-
-打开新的 PowerShell：
-
-```powershell
-Set-Location .\frontend
-python -m http.server 5500
-```
-
-前端地址：
-
-```text
-http://localhost:5500
-```
-
----
-
-## 9. 自动化测试
-
-如果 MongoDB 已经启动：
-
-```powershell
-Set-Location .\backend
-npm test
-```
-
-一键启动 MongoDB、后端并执行测试：
-
-```powershell
-Set-Location .\backend
-npm run test:all
-```
-
-如果 MongoDB 不在系统 PATH 中：
-
-```powershell
-Set-Location .\backend
-$env:MONGOD_BIN = "D:\MongoDB\bin\mongod.exe"
-npm run test:all
-```
-
-## 10. 重复填写控制
-
-问卷通过 `allowMultipleSubmissions` 字段控制同一登录用户是否可以重复提交。
-
-### 10.1 字段说明
-
-| 字段 | 类型 | 默认值 | 说明 |
-|---|---|---:|---|
-| `allowMultipleSubmissions` | Boolean | `true` | 是否允许同一登录用户重复填写 |
-
-字段行为：
-
-- `true`：允许同一登录用户多次提交同一份问卷。
-- `false`：同一登录用户只能提交一次。
-- 匿名用户没有稳定的用户身份，因此不执行同一用户重复填写限制。
-- 已有问卷默认使用 `true`，保证旧数据兼容。
-
-### 10.2 创建问卷
-
-创建问卷时可以设置是否允许重复填写：
-
-```http
-POST /api/surveys
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
-```
-
-请求示例：
-
-```json
-{
-  "title": "学生信息调查问卷",
-  "description": "用于收集学生基本信息",
-  "allowAnonymous": true,
-  "allowMultipleSubmissions": false,
-  "deadline": "2026-12-31T23:59:00.000Z"
-}
-```
-
-字段说明：
+字段规则：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
-| `title` | String | 是 | 问卷标题 |
-| `description` | String | 否 | 问卷说明 |
-| `allowAnonymous` | Boolean | 否 | 是否允许匿名填写，默认 `false` |
-| `allowMultipleSubmissions` | Boolean | 否 | 是否允许同一登录用户重复填写，默认 `true` |
-| `deadline` | Date | 否 | 截止时间，可以为空 |
+| `name` | String | 是 | 题库名称，最长 200 个字符 |
+| `description` | String | 否 | 题库说明，最长 2000 个字符 |
 
-`allowMultipleSubmissions` 必须是布尔值：
+成功返回 HTTP `201`。
+
+### 8.2 查询可访问的题库
+
+```http
+GET /api/question-banks
+```
+
+返回：
+
+- 当前用户创建的题库
+- 其他用户共享给当前用户的题库
+
+### 8.3 查看题库详情
+
+```http
+GET /api/question-banks/:id
+```
+
+只有题库所有者或被共享用户可以查看。
+
+### 8.4 修改题库信息
+
+```http
+PATCH /api/question-banks/:id
+```
+
+请求：
 
 ```json
 {
-  "allowMultipleSubmissions": true
+  "name": "更新后的题库名称",
+  "description": "更新后的题库说明"
 }
 ```
 
-以下写法会被拒绝：
+只允许修改 `name` 和 `description`，且只有题库所有者可以操作。
+
+### 8.5 将题目版本加入题库
+
+```http
+POST /api/question-banks/:id/questions
+```
+
+请求：
 
 ```json
 {
-  "allowMultipleSubmissions": "false"
+  "questionVersionId": "题目版本ID"
 }
 ```
 
-创建成功响应示例：
+要求：
+
+- 当前用户必须是题库所有者。
+- 当前用户必须有权访问该题目版本。
+- 重复加入同一个版本不会产生重复引用。
+
+### 8.6 替换题库中的题目版本
+
+```http
+PATCH /api/question-banks/:id/questions/:versionId
+```
+
+其中 `versionId` 是题库中现有的旧版本 ID。
+
+请求：
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "ownerId": "用户ID",
-    "title": "学生信息调查问卷",
-    "description": "用于收集学生基本信息",
-    "accessCode": "2b5ddbf18f84",
-    "allowAnonymous": true,
-    "allowMultipleSubmissions": false,
-    "status": "draft",
-    "deadline": null,
-    "questions": [],
-    "jumpRules": []
+  "newVersionId": "新版本ID"
+}
+```
+
+要求：
+
+- 只有题库所有者可以操作。
+- 旧版本必须存在于题库中。
+- 新旧版本必须属于同一 `familyId`。
+- 新版本必须是当前用户可访问的版本。
+- 新版本不能已经存在于该题库。
+
+该操作只更新题库引用，不会修改已经保存到问卷中的题目快照。
+
+### 8.7 从题库移除题目版本
+
+```http
+DELETE /api/question-banks/:id/questions/:versionId
+```
+
+要求：
+
+- 只有题库所有者可以操作。
+- 指定版本必须存在于题库中。
+
+该操作只移除题库引用，不会删除题目版本、版本历史、问卷题目或历史回答。
+
+### 8.8 共享题库
+
+```http
+POST /api/question-banks/:id/share
+```
+
+请求：
+
+```json
+{
+  "username": "receiver"
+}
+```
+
+要求：
+
+- 只有题库所有者可以共享。
+- 接收者必须是已注册用户。
+- 不能将题库共享给自己。
+
+共享用户可以查看和复用题库中的题目，但不能修改题库。
+
+---
+
+## 9. 题目版本管理
+
+本节所有接口均需要 JWT。
+
+### 9.1 创建独立题目
+
+```http
+POST /api/question-versions
+```
+
+请求：
+
+```json
+{
+  "content": {
+    "type": "number",
+    "title": "你的年龄",
+    "description": "",
+    "required": true,
+    "validation": {
+      "minValue": 0,
+      "maxValue": 120,
+      "integerOnly": true
+    }
   }
 }
 ```
 
-### 10.3 查看问卷详情
+创建结果：
 
-查看问卷详情时，响应中包含当前重复填写配置：
+- 系统生成新的 `familyId`
+- 首次版本号为 `1`
+- `parentVersionId` 为 `null`
+- `restoredFromVersionId` 为 `null`
+- 题目所有者为当前用户
+
+成功返回 HTTP `201`。
+
+题目内容与问卷题目使用相同的题型和校验规则，但独立版本不保存问卷内的 `order` 和 `sourceQuestionVersionId`。
+
+### 9.2 查询可访问的题目版本
 
 ```http
-GET /api/surveys/:id
-Authorization: Bearer <JWT_TOKEN>
+GET /api/question-versions
 ```
 
-响应中的相关字段：
+返回：
+
+- 当前用户创建的版本
+- 直接共享给当前用户的版本
+- 当前用户可访问题库中包含的版本
+
+### 9.3 创建新版本
+
+```http
+POST /api/question-versions/:id/versions
+```
+
+请求：
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "问卷ID",
-    "title": "学生信息调查问卷",
-    "allowAnonymous": true,
-    "allowMultipleSubmissions": false,
-    "status": "draft"
-  }
+  "content": {
+    "type": "number",
+    "title": "你的年龄（更新版）",
+    "description": "",
+    "required": true,
+    "validation": {
+      "minValue": 0,
+      "maxValue": 150,
+      "integerOnly": true
+    }
+  },
+  "changeNote": "扩大年龄范围"
 }
 ```
 
-### 10.4 修改重复填写配置
+规则：
 
-可以通过修改问卷接口更新该字段：
+- 只有题目所有者可以创建新版本。
+- 新版本沿用原题目的 `familyId`。
+- 系统按题目族自动生成递增版本号。
+- `parentVersionId` 指向创建新版本时使用的来源版本。
+- 新版本不会覆盖旧版本。
+
+成功返回 HTTP `201`。
+
+### 9.4 查看版本历史
 
 ```http
-PATCH /api/surveys/:id
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
+GET /api/question-versions/:id/history
 ```
 
-请求示例：
+返回同一 `familyId` 下当前用户有权访问的版本，并按版本号排序。
+
+所有者可以查看完整历史；共享用户只能看到获得访问权限的版本。
+
+### 9.5 恢复历史版本
+
+```http
+POST /api/question-versions/:id/restore
+```
+
+请求：
 
 ```json
 {
-  "allowMultipleSubmissions": false
+  "targetVersionId": "历史版本ID",
+  "changeNote": "恢复到历史版本"
 }
 ```
 
-允许修改的字段包括：
+规则：
 
-- `title`
-- `description`
-- `allowAnonymous`
-- `allowMultipleSubmissions`
-- `deadline`
+- `:id` 表示当前版本。
+- 只有题目所有者可以恢复。
+- 目标版本必须与当前版本属于同一题目族。
+- 目标版本必须早于当前版本。
+- 恢复不会覆盖当前版本，而是创建一个新版本。
+- 新版本的 `restoredFromVersionId` 记录目标历史版本。
 
-字段不是布尔值时，接口返回：
+成功返回 HTTP `201`。
+
+### 9.6 共享题目版本
+
+```http
+POST /api/question-versions/:id/share
+```
+
+请求：
 
 ```json
 {
-  "success": false,
-  "message": "allowMultipleSubmissions 必须是布尔值"
+  "username": "receiver"
 }
 ```
 
-### 10.5 提交问卷时的限制
+规则：
 
-提交接口：
+- 只有题目所有者可以共享。
+- 接收者必须是已注册用户。
+- 不能共享给自己。
+- 接收者只能查看和复用该版本，不能创建原题目的新版本。
 
-```http
-POST /api/responses/:accessCode
-Content-Type: application/json
-```
-
-登录用户提交时，需要携带 JWT：
+### 9.7 将题目版本选入草稿问卷
 
 ```http
-Authorization: Bearer <JWT_TOKEN>
+POST /api/question-versions/:id/use
 ```
 
-请求示例：
+请求：
 
 ```json
 {
-  "answers": [
+  "surveyId": "草稿问卷ID"
+}
+```
+
+要求：
+
+- 当前用户必须有权访问该题目版本。
+- 问卷必须属于当前用户。
+- 问卷必须处于 `draft` 状态。
+- 题目内容必须通过统一校验。
+
+系统会：
+
+1. 为问卷中的嵌入题目生成新的题目 ID。
+2. 复制该版本的题型、标题、说明、必答设置、选项和校验规则。
+3. 按问卷现有题目数量设置顺序。
+4. 保存来源字段：
+
+```json
+{
+  "sourceQuestionVersionId": "被选入的题目版本ID"
+}
+```
+
+题目选入问卷后成为问卷快照。题库替换版本、移除版本或创建新版本，都不会修改该快照。
+
+已发布问卷不能继续选入题目。
+
+### 9.8 查询题目使用情况
+
+查询单个版本：
+
+```http
+GET /api/question-versions/:id/usages
+```
+
+显式指定单版本范围：
+
+```http
+GET /api/question-versions/:id/usages?scope=version
+```
+
+查询整个题目族：
+
+```http
+GET /api/question-versions/:id/usages?scope=family
+```
+
+只有题目所有者可以查询。
+
+响应包含：
+
+- `familyId`
+- 查询范围
+- 总使用次数
+- 使用该版本的问卷
+- 问卷标题和状态
+- 问卷中的题目 ID 和顺序
+- 来源版本 ID 和版本号
+- 问卷创建及更新时间
+
+### 9.9 查询跨问卷统计
+
+查询单个版本：
+
+```http
+GET /api/question-versions/:id/statistics
+```
+
+显式指定单版本范围：
+
+```http
+GET /api/question-versions/:id/statistics?scope=version
+```
+
+查询整个题目族：
+
+```http
+GET /api/question-versions/:id/statistics?scope=family
+```
+
+只有题目所有者可以查询。
+
+统计结果按版本分组，不会将不同版本的回答混合计算。
+
+响应结构示例：
+
+```json
+{
+  "familyId": "题目族ID",
+  "scope": "family",
+  "totalSurveys": 3,
+  "totalSurveyResponses": 3,
+  "totalResponses": 3,
+  "versionStatistics": [
     {
-      "questionId": "题目ID",
-      "value": "选项A"
+      "questionVersionId": "版本ID",
+      "version": 1,
+      "totalSurveys": 2,
+      "totalResponses": 2,
+      "statistics": {
+        "title": "你的年龄",
+        "type": "number",
+        "totalAnswers": 2,
+        "values": [
+          20,
+          40
+        ],
+        "average": 30,
+        "min": 20,
+        "max": 40,
+        "distribution": [
+          {
+            "value": 20,
+            "count": 1
+          },
+          {
+            "value": 40,
+            "count": 1
+          }
+        ]
+      }
     }
   ]
 }
 ```
 
-当问卷的 `allowMultipleSubmissions` 为 `true` 时，同一登录用户可以重复提交：
+不同题型的统计内容：
+
+| 题型 | 统计内容 |
+|---|---|
+| `single` | 各选项数量 |
+| `multiple` | 各选项被选择次数 |
+| `text` | 文本回答列表 |
+| `number` | 数值列表、平均值、最小值、最大值和分布 |
+
+---
+
+## 10. 共享与权限规则
+
+### 10.1 题目版本所有者
+
+可以：
+
+- 创建新版本
+- 查看版本历史
+- 恢复历史版本
+- 共享题目版本
+- 查询使用情况
+- 查询跨问卷统计
+- 将版本加入自己拥有的题库
+- 将版本选入自己的草稿问卷
+
+### 10.2 题目版本共享用户
+
+可以：
+
+- 查看被共享的版本
+- 将版本选入自己的草稿问卷
+- 在拥有权限的情况下加入自己的题库
+
+不能：
+
+- 修改原版本
+- 创建原题目的新版本
+- 恢复原题目的历史版本
+- 代替所有者共享该版本
+- 查询所有者专属的使用统计
+
+### 10.3 题库所有者
+
+可以：
+
+- 修改题库名称和说明
+- 加入题目版本
+- 替换题目版本
+- 移除题目版本
+- 共享题库
+
+### 10.4 题库共享用户
+
+可以：
+
+- 查看共享题库
+- 查看题库中可访问的版本
+- 将题目选入自己的草稿问卷
+
+不能：
+
+- 修改题库
+- 替换或移除题库中的版本
+- 修改题目所有者的版本
+
+---
+
+## 11. 数据兼容和快照规则
+
+### 11.1 第一阶段问卷兼容
+
+第二阶段只在问卷嵌入题目中增加可空字段：
 
 ```json
 {
-  "success": true,
-  "message": "问卷提交成功",
-  "data": {
-    "responseId": "回答记录ID"
-  }
+  "sourceQuestionVersionId": null
 }
 ```
 
-当问卷的 `allowMultipleSubmissions` 为 `false`，并且当前登录用户已经提交过该问卷时，接口返回：
+第一阶段创建的旧题目没有该字段时仍然可以正常：
 
-```http
-409 Conflict
+- 查看
+- 修改草稿问卷
+- 发布
+- 填写
+- 提交
+- 统计
+
+不需要迁移旧数据。
+
+### 11.2 问卷快照保护
+
+从题库选入问卷时复制题目内容，不在问卷运行时动态读取题库。因此：
+
+- 创建题目新版本不会修改旧问卷。
+- 恢复历史版本不会修改旧问卷。
+- 替换题库版本不会修改旧问卷。
+- 从题库移除版本不会修改旧问卷。
+- 已发布问卷结构保持不变。
+- 已提交回答仍然能够按问卷原题目 ID 统计。
+
+### 11.3 版本不可覆盖
+
+题目版本采用追加式设计：
+
+- 内容更新创建新版本。
+- 恢复操作创建新版本。
+- 历史版本不会被覆盖。
+- 同一题目族通过 `familyId` 关联。
+- 父子关系通过 `parentVersionId` 保存。
+- 恢复来源通过 `restoredFromVersionId` 保存。
+
+---
+
+## 12. 安全说明
+
+- 密码使用 bcrypt 哈希保存。
+- 需要登录的接口使用 JWT。
+- 所有题库、题目版本、问卷和统计接口均进行权限检查。
+- 共享权限为只读和复用权限，不授予修改权。
+- 后端统一校验题目结构，不能依赖前端校验。
+- 不应将 `.env` 或真实 JWT 密钥提交到公开仓库。
+- 无效或过期 Token 不会自动降级为匿名用户。
+- 客户端不应根据 `404` 区分资源不存在和无权访问，以减少资源枚举风险。
+
+---
+
+## 13. 第二阶段主要接口汇总
+
+```text
+POST   /api/question-banks
+GET    /api/question-banks
+GET    /api/question-banks/:id
+PATCH  /api/question-banks/:id
+POST   /api/question-banks/:id/questions
+PATCH  /api/question-banks/:id/questions/:versionId
+DELETE /api/question-banks/:id/questions/:versionId
+POST   /api/question-banks/:id/share
+
+POST   /api/question-versions
+GET    /api/question-versions
+POST   /api/question-versions/:id/versions
+GET    /api/question-versions/:id/history
+POST   /api/question-versions/:id/restore
+POST   /api/question-versions/:id/share
+POST   /api/question-versions/:id/use
+GET    /api/question-versions/:id/usages
+GET    /api/question-versions/:id/statistics
 ```
-
-响应：
-
-```json
-{
-  "success": false,
-  "message": "同一用户不能重复提交该问卷"
-}
-```
-
-匿名用户提交时：
-
-- 必须满足问卷的 `allowAnonymous` 配置。
-- 不执行同一用户重复填写限制。
-- 每次匿名提交都会生成独立的回答记录。
-
-### 10.6 相关状态码
-
-| 状态码 | 说明 |
-|---:|---|
-| `200` | 修改问卷或提交成功 |
-| `400` | 重复填写配置格式错误或答案校验失败 |
-| `401` | 未登录、Token 无效或问卷不允许匿名填写 |
-| `404` | 问卷不存在或访问码无效 |
-| `409` | 当前登录用户已经提交过不允许重复填写的问卷 |

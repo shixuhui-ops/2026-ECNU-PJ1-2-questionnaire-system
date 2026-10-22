@@ -49,6 +49,11 @@ const validationSchema = new mongoose.Schema(
 
 const questionSchema = new mongoose.Schema(
     {
+        sourceQuestionVersionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "QuestionVersion",
+            default: null
+        },
         type: {
             type: String,
             enum: ["single", "multiple", "text", "number"],
