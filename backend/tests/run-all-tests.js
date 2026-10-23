@@ -11,12 +11,14 @@ fs.mkdirSync(dbPath, {
 
 const testMongoPort = Number(process.env.TEST_MONGO_PORT || 27018);
 const testApiPort = Number(process.env.TEST_API_PORT || 3100);
+const testFrontendPort = Number(process.env.TEST_FRONTEND_PORT || 5501);
 
 const testMongoUri =
     process.env.TEST_MONGODB_URI ||
     `mongodb://127.0.0.1:${testMongoPort}/questionnaire_system_test`;
 
 const testApiBaseUrl = `http://127.0.0.1:${testApiPort}/api`;
+const testFrontendBaseUrl = `http://127.0.0.1:${testFrontendPort}`;
 
 const testEnvironment = {
     ...process.env,
@@ -94,14 +96,25 @@ async function main() {
     startProcess(process.execPath, ["src/server.js"], {
         env: testEnvironment
     });
+    startProcess(process.execPath, ["tests/static-server.js"], {
+        env: {
+            ...testEnvironment,
+            TEST_FRONTEND_PORT: String(testFrontendPort)
+        }
+    });
 
     try {
-        await waitForHealth(`${testApiBaseUrl}/health`);
+        await Promise.all([
+            waitForHealth(`${testApiBaseUrl}/health`),
+            waitForHealth(`${testFrontendBaseUrl}/index.html`)
+        ]);
 
         const testFiles = [
             "tests/api.test.js",
             "tests/question-version.test.js",
-            "tests/question-bank.test.js"
+            "tests/question-bank.test.js",
+            "tests/browser-smoke.test.js",
+            "tests/question-bank-browser.test.js"
         ];
 
         for (const testFile of testFiles) {
@@ -110,7 +123,8 @@ async function main() {
                 stdio: "inherit",
                 env: {
                     ...testEnvironment,
-                    API_BASE_URL: testApiBaseUrl
+                    API_BASE_URL: testApiBaseUrl,
+                    FRONTEND_BASE_URL: testFrontendBaseUrl
                 }
             });
 

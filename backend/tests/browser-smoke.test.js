@@ -20,6 +20,7 @@ async function run() {
         await assertVisible(page, "nav a[href='./manage.html']");
         await assertVisible(page, "nav a[href='./fill.html']");
         await assertVisible(page, "nav a[href='./stats.html']");
+        await assertVisible(page, "nav a[href='./question-bank.html']");
         await assertVisible(page, "#authSection");
         await assertVisible(page, "#username");
         await assertVisible(page, "#password");
@@ -51,7 +52,17 @@ async function run() {
         await assertVisible(page, "#surveyId");
         await assertVisible(page, "#loadButton");
         await assertAttached(page, "#statistics");
+        await page.goto(`${frontendBaseUrl}/question-bank.html`, {
+            waitUntil: "domcontentloaded"
+        });
 
+        await assertPageTitle(page, "题库与题目版本管理");
+        await assertVisible(page, "nav a[href='./index.html']");
+        await assertVisible(page, "#loginNotice");
+        await assertAttached(page, "#workspace");
+        await assertAttached(page, "#createBankForm");
+        await assertAttached(page, "#questionEditor");
+        await assertAttached(page, "#versionDetailSection");
         console.log("浏览器端冒烟测试通过");
     } finally {
         await browser.close();

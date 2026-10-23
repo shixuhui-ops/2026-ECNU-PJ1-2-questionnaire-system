@@ -1,7 +1,9 @@
 ﻿"use strict";
 
 const apiHost = window.location.hostname || "localhost";
-const apiBase = `http://${apiHost}:3000/api`;
+const defaultApiBase = `http://${apiHost}:3000/api`;
+const apiBase =
+    localStorage.getItem("questionnaire_api_base") || defaultApiBase;
 const token = localStorage.getItem("questionnaire_token") || "";
 
 const messageElement = document.querySelector("#message");
@@ -437,48 +439,77 @@ function showVersionDetail(version) {
 
     container.appendChild(shareForm);
     const useForm = document.createElement("form");
-    useForm.innerHTML = `
-        <h4>选入草稿问卷</h4>
-        <label>
-            问卷 ID
-            <input id="useSurveyId"
-                   placeholder="请输入草稿问卷 ID"
-                   required>
-        </label>
-        <button type="submit">加入问卷</button>
-    `;
+    const heading = document.createElement("h4");
+    heading.textContent = "选入草稿问卷";
+
+    const label = document.createElement("label");
+    label.textContent = "选择问卷";
+
+    const surveySelect = document.createElement("select");
+    surveySelect.required = true;
+    surveySelect.disabled = true;
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "正在加载草稿问卷...";
+    surveySelect.appendChild(placeholder);
+
+    const submitButton = document.createElement("button");
+    submitButton.type = "submit";
+    submitButton.textContent = "加入问卷";
+    submitButton.disabled = true;
+
+    label.appendChild(surveySelect);
+    useForm.append(heading, label, submitButton);
+    container.appendChild(useForm);
+
+    apiRequest("/surveys/mine").then(surveys => {
+        surveySelect.replaceChildren();
+
+        const drafts = surveys.filter(survey => survey.status === "draft");
+        if (drafts.length === 0) {
+            placeholder.textContent = "暂无草稿问卷，请先创建问卷";
+            surveySelect.appendChild(placeholder);
+            return;
+        }
+
+        placeholder.textContent = "请选择草稿问卷";
+        surveySelect.appendChild(placeholder);
+
+        for (const survey of drafts) {
+            const option = document.createElement("option");
+            option.value = survey._id;
+            option.textContent = survey.title;
+            surveySelect.appendChild(option);
+        }
+
+        surveySelect.disabled = false;
+        submitButton.disabled = false;
+    }).catch(error => {
+        placeholder.textContent = "草稿问卷加载失败";
+        showMessage(error.message, true);
+    });
 
     useForm.addEventListener("submit", async event => {
         event.preventDefault();
+        if (!surveySelect.value) return;
 
-        const surveyId = useForm.querySelector(
-            "#useSurveyId"
-        ).value.trim();
-
+        submitButton.disabled = true;
         try {
-            const result = await apiRequest(
+            const question = await apiRequest(
                 `/question-versions/${encodeURIComponent(version._id)}/use`,
                 {
                     method: "POST",
-                    body: JSON.stringify({ surveyId })
+                    body: JSON.stringify({ surveyId: surveySelect.value })
                 }
             );
-
-            const addedQuestionId =
-                result?._id ||
-                result?.question?._id ||
-                result?.questionId ||
-                "已生成题目快照";
-
-            showMessage(
-                `题目已加入问卷，题目 ID：${addedQuestionId}`
-            );
+            showMessage(`题目已加入问卷，题目 ID：${question._id}`);
         } catch (error) {
             showMessage(`加入问卷失败：${error.message}`, true);
+        } finally {
+            submitButton.disabled = false;
         }
     });
-
-    container.appendChild(useForm);
 
     const form = document.createElement("form");
     form.innerHTML = `

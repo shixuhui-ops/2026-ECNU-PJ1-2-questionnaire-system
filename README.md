@@ -348,12 +348,15 @@ npm --prefix .\backend run test:all
 1. 启动测试 MongoDB
 2. 启动测试后端
 3. 等待健康检查通过
-4. 依次执行 API 自动化测试：
+4. 启动隔离的前端静态测试服务器
+5. 依次执行自动化测试：
    - `backend/tests/api.test.js`
    - `backend/tests/question-version.test.js`
    - `backend/tests/question-bank.test.js`
-5. 输出测试结果
-6. 清理测试进程
+   - `backend/tests/browser-smoke.test.js`
+   - `backend/tests/question-bank-browser.test.js`
+6. 输出测试结果
+7. 清理 MongoDB、后端和前端测试进程
 
 测试环境与正常运行环境隔离：
 
@@ -363,6 +366,7 @@ npm --prefix .\backend run test:all
 | MongoDB 端口 | `27017` | `27018` |
 | 后端端口 | `3000` | `3100` |
 | 数据库名称 | `questionnaire_system` | `questionnaire_system_test` |
+| 前端端口 | `5500` | `5501` |
 
 ### 2. 普通 API 测试
 
@@ -423,6 +427,10 @@ npm run test:e2e
 
 ```text
 所有自动化测试通过
+题目版本生命周期测试通过
+题库创建、加入和共享测试通过
+浏览器端冒烟测试通过
+第二阶段题库浏览器端到端测试通过
 ```
 
 ## 八、主要 API

@@ -225,6 +225,9 @@
             <div>问卷ID：${escapeHtml(survey._id)}</div>
             <div>访问码：${escapeHtml(survey.accessCode)}</div>
             <div>题目数：${escapeHtml(survey.questions.length)}</div>
+            ${survey.status === "published"
+                            ? `<div><a href="./fill.html?code=${encodeURIComponent(survey.accessCode)}">打开填写链接</a></div>`
+                            : ""}
           `;
                     list.appendChild(item);
                 }

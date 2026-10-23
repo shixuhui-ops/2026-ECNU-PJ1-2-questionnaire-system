@@ -429,7 +429,7 @@ router.post("/:id/publish", requireAuth, async (req, res) => {
             success: true,
             message: "问卷发布成功",
             data: {
-                accessUrl: `/survey/${survey.accessCode}`,
+                accessUrl: `/fill.html?code=${encodeURIComponent(survey.accessCode)}`,
                 survey
             }
         });
