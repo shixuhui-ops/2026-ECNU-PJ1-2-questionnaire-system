@@ -283,6 +283,102 @@ async function run() {
         statisticsAfterSubmit.data.versionStatistics[0].statistics.totalAnswers,
         1
     );
+    const snapshotHistory = await request(
+        `/question-versions/${snapshotVersion.data._id}/history`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(snapshotHistory.success, true);
+    assert.equal(snapshotHistory.data.versions.length, 2);
+
+    const snapshotVersion2 = snapshotHistory.data.versions.find(
+        (item) => item.version === 2
+    );
+
+    assert.ok(snapshotVersion2);
+
+    const secondSurvey = await request("/surveys", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+            title: "题目族统计 v2 测试",
+            allowAnonymous: true
+        })
+    });
+
+    const secondSurveyId = secondSurvey.data._id;
+
+    const secondUsedQuestion = await request(
+        `/question-versions/${snapshotVersion2._id}/use`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({ surveyId: secondSurveyId })
+        }
+    );
+
+    assert.equal(secondUsedQuestion.success, true);
+    assert.equal(secondUsedQuestion.data.title, "题库后续版本标题");
+
+    const secondPublished = await request(
+        `/surveys/${secondSurveyId}/publish`,
+        {
+            method: "POST",
+            headers: authHeaders
+        }
+    );
+
+    const secondAccessCode = secondPublished.data.survey.accessCode;
+
+    const secondSubmitted = await request(
+        `/responses/${secondAccessCode}`,
+        {
+            method: "POST",
+            body: JSON.stringify({
+                answers: [
+                    {
+                        questionId: secondUsedQuestion.data._id,
+                        value: "v2统计答案"
+                    }
+                ]
+            })
+        }
+    );
+
+    assert.equal(secondSubmitted.success, true);
+
+    const familyStatistics = await request(
+        `/question-versions/${snapshotVersion.data._id}/statistics?scope=family`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(familyStatistics.success, true);
+    assert.equal(familyStatistics.data.scope, "family");
+    assert.equal(familyStatistics.data.totalSurveys, 2);
+    assert.equal(familyStatistics.data.totalSurveyResponses, 2);
+    assert.equal(familyStatistics.data.totalResponses, 2);
+    assert.deepEqual(
+        familyStatistics.data.versionStatistics.map((item) => ({
+            version: item.version,
+            totalSurveys: item.totalSurveys,
+            totalResponses: item.totalResponses,
+            totalAnswers: item.statistics.totalAnswers
+        })),
+        [
+            {
+                version: 1,
+                totalSurveys: 1,
+                totalResponses: 1,
+                totalAnswers: 1
+            },
+            {
+                version: 2,
+                totalSurveys: 1,
+                totalResponses: 1,
+                totalAnswers: 1
+            }
+        ]
+    );
     console.log("题目版本生命周期测试通过");
 }
 
