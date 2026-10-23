@@ -421,6 +421,65 @@ async function run() {
     }
 
     assert.equal(invalidScopeRejected, true);
+
+    const directShare = await request(
+        `/question-versions/${snapshotVersion.data._id}/share`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+                username: otherUsername
+            })
+        }
+    );
+
+    assert.equal(directShare.success, true);
+    assert.equal(
+        String(directShare.data.questionVersionId),
+        String(snapshotVersion.data._id)
+    );
+    assert.equal(
+        directShare.data.sharedWithUser.username,
+        otherUsername
+    );
+
+    const sharedSurvey = await request("/surveys", {
+        method: "POST",
+        headers: otherHeaders,
+        body: JSON.stringify({
+            title: "直接共享题目复用测试"
+        })
+    });
+
+    const sharedUse = await request(
+        `/question-versions/${snapshotVersion.data._id}/use`,
+        {
+            method: "POST",
+            headers: otherHeaders,
+            body: JSON.stringify({
+                surveyId: sharedSurvey.data._id
+            })
+        }
+    );
+
+    assert.equal(sharedUse.success, true);
+    assert.equal(
+        String(sharedUse.data.sourceQuestionVersionId),
+        String(snapshotVersion.data._id)
+    );
+
+    let unsharedVersionDenied = false;
+
+    try {
+        await request(`/question-versions/${version1Id}/history`, {
+            headers: otherHeaders
+        });
+    } catch (error) {
+        assert.equal(error.status, 404);
+        unsharedVersionDenied = true;
+    }
+
+    assert.equal(unsharedVersionDenied, true);
     console.log("题目版本生命周期测试通过");
 }
 
