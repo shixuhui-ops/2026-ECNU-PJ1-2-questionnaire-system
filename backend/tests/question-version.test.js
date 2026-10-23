@@ -480,6 +480,44 @@ async function run() {
     }
 
     assert.equal(unsharedVersionDenied, true);
+
+    const concurrentUpdates = await Promise.all(
+        Array.from({ length: 4 }, (_, index) =>
+            request(
+                `/question-versions/${snapshotVersion.data._id}/versions`,
+                {
+                    method: "POST",
+                    headers: authHeaders,
+                    body: JSON.stringify({
+                        content: {
+                            ...snapshotContent,
+                            title: `并发版本 ${index + 1}`
+                        },
+                        changeNote: `并发创建 ${index + 1}`
+                    })
+                }
+            )
+        )
+    );
+
+    assert.equal(concurrentUpdates.length, 4);
+    assert.ok(concurrentUpdates.every((result) => result.success));
+
+    const concurrentNumbers = concurrentUpdates
+        .map((result) => result.data.version)
+        .sort((left, right) => left - right);
+
+    assert.deepEqual(concurrentNumbers, [3, 4, 5, 6]);
+
+    const historyAfterConcurrency = await request(
+        `/question-versions/${snapshotVersion.data._id}/history`,
+        { headers: authHeaders }
+    );
+
+    assert.deepEqual(
+        historyAfterConcurrency.data.versions.map((item) => item.version),
+        [1, 2, 3, 4, 5, 6]
+    );
     console.log("题目版本生命周期测试通过");
 }
 
