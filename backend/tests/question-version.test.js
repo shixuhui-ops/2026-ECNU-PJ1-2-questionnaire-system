@@ -146,7 +146,8 @@ async function run() {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
-            title: "题目快照不可变测试"
+            title: "题目快照不可变测试",
+            allowAnonymous: true
         })
     });
 
@@ -199,6 +200,88 @@ async function run() {
     assert.equal(
         String(surveyDetail.data.questions[0].sourceQuestionVersionId),
         String(snapshotVersion.data._id)
+    );
+    const usages = await request(
+        `/question-versions/${snapshotVersion.data._id}/usages`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(usages.success, true);
+    assert.equal(usages.data.scope, "version");
+    assert.equal(usages.data.totalUsages, 1);
+    assert.equal(usages.data.usages.length, 1);
+    assert.equal(
+        String(usages.data.usages[0].surveyId),
+        String(surveyId)
+    );
+    assert.equal(
+        String(usages.data.usages[0].questionVersionId),
+        String(snapshotVersion.data._id)
+    );
+
+    const familyUsages = await request(
+        `/question-versions/${snapshotVersion.data._id}/usages?scope=family`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(familyUsages.success, true);
+    assert.equal(familyUsages.data.scope, "family");
+    assert.equal(familyUsages.data.totalUsages, 1);
+
+    const statistics = await request(
+        `/question-versions/${snapshotVersion.data._id}/statistics`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(statistics.success, true);
+    assert.equal(statistics.data.scope, "version");
+    assert.equal(statistics.data.totalSurveys, 1);
+    assert.equal(statistics.data.totalSurveyResponses, 0);
+    assert.equal(statistics.data.totalResponses, 0);
+    assert.equal(statistics.data.versionStatistics.length, 1);
+    assert.equal(
+        statistics.data.versionStatistics[0].version,
+        snapshotVersion.data.version
+    );
+    const published = await request(`/surveys/${surveyId}/publish`, {
+        method: "POST",
+        headers: authHeaders
+    });
+
+    assert.equal(published.success, true);
+    const accessCode = published.data.survey.accessCode;
+    const snapshotQuestionId = usedQuestion.data._id;
+
+    const submitted = await request(`/responses/${accessCode}`, {
+        method: "POST",
+        body: JSON.stringify({
+            answers: [
+                {
+                    questionId: snapshotQuestionId,
+                    value: "统计测试答案"
+                }
+            ]
+        })
+    });
+
+    assert.equal(submitted.success, true);
+
+    const statisticsAfterSubmit = await request(
+        `/question-versions/${snapshotVersion.data._id}/statistics`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(statisticsAfterSubmit.success, true);
+    assert.equal(statisticsAfterSubmit.data.totalSurveys, 1);
+    assert.equal(statisticsAfterSubmit.data.totalSurveyResponses, 1);
+    assert.equal(statisticsAfterSubmit.data.totalResponses, 1);
+    assert.equal(
+        statisticsAfterSubmit.data.versionStatistics[0].totalResponses,
+        1
+    );
+    assert.equal(
+        statisticsAfterSubmit.data.versionStatistics[0].statistics.totalAnswers,
+        1
     );
     console.log("题目版本生命周期测试通过");
 }
