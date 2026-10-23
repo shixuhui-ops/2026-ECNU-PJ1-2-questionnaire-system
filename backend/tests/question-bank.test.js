@@ -130,6 +130,58 @@ async function run() {
 
     assert.equal(viewerDetail.success, true);
     assert.equal(String(viewerDetail.data._id), String(bankId));
+    const viewerSurvey = await request("/surveys", {
+        method: "POST",
+        headers: viewerHeaders,
+        body: JSON.stringify({
+            title: "共享题目复用测试"
+        })
+    });
+
+    assert.equal(viewerSurvey.success, true);
+
+    const reusedQuestion = await request(
+        `/question-versions/${versionId}/use`,
+        {
+            method: "POST",
+            headers: viewerHeaders,
+            body: JSON.stringify({
+                surveyId: viewerSurvey.data._id
+            })
+        }
+    );
+
+    assert.equal(reusedQuestion.success, true);
+    assert.equal(reusedQuestion.data.title, "题库共享测试题");
+    assert.equal(
+        String(reusedQuestion.data.sourceQuestionVersionId),
+        String(versionId)
+    );
+
+    let sharedVersionMutationDenied = false;
+
+    try {
+        await request(`/question-versions/${versionId}/versions`, {
+            method: "POST",
+            headers: viewerHeaders,
+            body: JSON.stringify({
+                content: {
+                    type: "text",
+                    title: "未授权修改",
+                    required: true,
+                    validation: {
+                        minLength: 1,
+                        maxLength: 100
+                    }
+                }
+            })
+        });
+    } catch (error) {
+        assert.equal(error.status, 404);
+        sharedVersionMutationDenied = true;
+    }
+
+    assert.equal(sharedVersionMutationDenied, true);
     let viewerMutationDenied = false;
 
     try {
