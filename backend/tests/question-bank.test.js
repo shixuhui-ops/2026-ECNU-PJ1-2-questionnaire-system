@@ -146,7 +146,125 @@ async function run() {
     }
 
     assert.equal(viewerMutationDenied, true);
+    const survey = await request("/surveys", {
+        method: "POST",
+        headers: ownerHeaders,
+        body: JSON.stringify({
+            title: "题库替换与快照保护测试"
+        })
+    });
 
+    assert.equal(survey.success, true);
+    const surveyId = survey.data._id;
+
+    const usedQuestion = await request(
+        `/question-versions/${versionId}/use`,
+        {
+            method: "POST",
+            headers: ownerHeaders,
+            body: JSON.stringify({ surveyId })
+        }
+    );
+
+    assert.equal(usedQuestion.success, true);
+    assert.equal(usedQuestion.data.title, "题库共享测试题");
+
+    const version2 = await request(
+        `/question-versions/${versionId}/versions`,
+        {
+            method: "POST",
+            headers: ownerHeaders,
+            body: JSON.stringify({
+                content: {
+                    type: "text",
+                    title: "题库共享测试题 v2",
+                    required: true,
+                    validation: {
+                        minLength: 1,
+                        maxLength: 100
+                    }
+                },
+                changeNote: "验证题库版本替换"
+            })
+        }
+    );
+
+    assert.equal(version2.success, true);
+    assert.equal(version2.data.version, 2);
+
+    const replaced = await request(
+        `/question-banks/${bankId}/questions/${versionId}`,
+        {
+            method: "PATCH",
+            headers: ownerHeaders,
+            body: JSON.stringify({
+                newVersionId: version2.data._id
+            })
+        }
+    );
+
+    assert.equal(replaced.success, true);
+    assert.equal(
+        replaced.data.questionVersionIds.some(
+            (id) => String(id) === String(versionId)
+        ),
+        false
+    );
+    assert.equal(
+        replaced.data.questionVersionIds.some(
+            (id) => String(id) === String(version2.data._id)
+        ),
+        true
+    );
+
+    const surveyAfterReplace = await request(`/surveys/${surveyId}`, {
+        headers: ownerHeaders
+    });
+
+    assert.equal(
+        surveyAfterReplace.data.questions[0].title,
+        "题库共享测试题"
+    );
+    assert.equal(
+        String(surveyAfterReplace.data.questions[0].sourceQuestionVersionId),
+        String(versionId)
+    );
+
+    const removed = await request(
+        `/question-banks/${bankId}/questions/${version2.data._id}`,
+        {
+            method: "DELETE",
+            headers: ownerHeaders
+        }
+    );
+
+    assert.equal(removed.success, true);
+    assert.equal(
+        removed.data.questionVersionIds.some(
+            (id) => String(id) === String(version2.data._id)
+        ),
+        false
+    );
+
+    const history = await request(
+        `/question-versions/${version2.data._id}/history`,
+        { headers: ownerHeaders }
+    );
+
+    assert.equal(history.success, true);
+    assert.deepEqual(
+        history.data.versions.map((item) => item.version),
+        [1, 2]
+    );
+
+    const surveyAfterRemove = await request(`/surveys/${surveyId}`, {
+        headers: ownerHeaders
+    });
+
+    assert.equal(
+        surveyAfterRemove.data.questions[0].title,
+        "题库共享测试题"
+    );
     console.log("题库创建、加入和共享测试通过");
 }
 

@@ -31,7 +31,7 @@ node --check .\frontend\question-bank.js
 第二阶段自动化 API 测试由以下脚本执行：
 
 - `backend/tests/question-version.test.js`：题目版本创建、版本历史、恢复关系、问卷快照不可变性、题目使用情况及真实答卷后的跨问卷统计。
-- `backend/tests/question-bank.test.js`：题库创建、题目加入、共享访问及共享用户只读权限。
+- `backend/tests/question-bank.test.js`：题库创建、题目加入、共享访问与只读权限、同题目族版本替换、移除后版本历史及问卷快照保护。
 
 以上脚本已纳入 `npm run test:all`，与第一阶段 API 回归测试在隔离的 MongoDB 和后端环境中依次执行。
 
