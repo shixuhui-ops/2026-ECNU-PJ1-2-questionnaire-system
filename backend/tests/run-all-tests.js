@@ -98,21 +98,32 @@ async function main() {
     try {
         await waitForHealth(`${testApiBaseUrl}/health`);
 
-        const test = spawn(process.execPath, ["tests/api.test.js"], {
-            cwd: backendDir,
-            stdio: "inherit",
-            env: {
-                ...testEnvironment,
-                API_BASE_URL: testApiBaseUrl
+        const testFiles = [
+            "tests/api.test.js",
+            "tests/question-version.test.js",
+            "tests/question-bank.test.js"
+        ];
+
+        for (const testFile of testFiles) {
+            const test = spawn(process.execPath, [testFile], {
+                cwd: backendDir,
+                stdio: "inherit",
+                env: {
+                    ...testEnvironment,
+                    API_BASE_URL: testApiBaseUrl
+                }
+            });
+
+            const exitCode = await new Promise((resolve, reject) => {
+                test.on("error", reject);
+                test.on("exit", (code) => resolve(code ?? 1));
+            });
+
+            if (exitCode !== 0) {
+                process.exitCode = exitCode;
+                break;
             }
-        });
-
-        const exitCode = await new Promise((resolve, reject) => {
-            test.on("error", reject);
-            test.on("exit", (code) => resolve(code ?? 1));
-        });
-
-        process.exitCode = exitCode;
+        }
     } finally {
         cleanup();
     }

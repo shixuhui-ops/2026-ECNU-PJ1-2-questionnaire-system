@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 const apiHost = window.location.hostname || "localhost";
 const apiBase = `http://${apiHost}:3000/api`;
@@ -442,7 +442,7 @@ function showVersionDetail(version) {
         <label>
             问卷 ID
             <input id="useSurveyId"
-                   value="6ad9d7505334ffe65a40d4c0"
+                   placeholder="请输入草稿问卷 ID"
                    required>
         </label>
         <button type="submit">加入问卷</button>

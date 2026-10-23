@@ -1,4 +1,4 @@
-# API 接口文档
+﻿# API 接口文档
 
 ## 1. 基本信息
 
@@ -366,10 +366,10 @@ POST /api/surveys/:id/jump-rules
 |---|---|
 | `equals` | 单选或普通相等判断 |
 | `contains` | 多选题包含判断 |
-| `gt` | 数字大于 |
-| `gte` | 数字大于等于 |
-| `lt` | 数字小于 |
-| `lte` | 数字小于等于 |
+| `greaterThan` | 数字大于 |
+| `greaterOrEqual` | 数字大于等于 |
+| `lessThan` | 数字小于 |
+| `lessOrEqual` | 数字小于等于 |
 
 系统拒绝自跳转、重复规则和与题型不匹配的规则。
 

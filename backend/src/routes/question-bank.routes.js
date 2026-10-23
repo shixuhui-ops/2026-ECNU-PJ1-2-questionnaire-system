@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const mongoose = require("mongoose");
 const QuestionBank = require("../models/question-bank.model");
 const QuestionVersion = require("../models/question-version.model");
@@ -184,7 +184,7 @@ router.post("/:id/questions", async (req, res) => {
                 }
             },
             {
-                new: true,
+                returnDocument: "after",
                 runValidators: true
             }
         );
@@ -276,7 +276,7 @@ router.post("/:id/share", async (req, res) => {
                 }
             },
             {
-                new: true,
+                returnDocument: "after",
                 runValidators: true
             }
         );
@@ -396,7 +396,7 @@ router.patch("/:id/questions/:versionId", async (req, res) => {
                 arrayFilters: [
                     { entry: oldVersion._id }
                 ],
-                new: true,
+                returnDocument: "after",
                 runValidators: true
             }
         );
@@ -478,7 +478,7 @@ router.patch("/:id", async (req, res) => {
                 ownerId: req.user._id
             },
             { $set: updates },
-            { new: true, runValidators: true }
+            { returnDocument: "after", runValidators: true }
         );
 
         if (!bank) {
@@ -529,7 +529,7 @@ router.delete("/:id/questions/:versionId", async (req, res) => {
                     questionVersionIds: new mongoose.Types.ObjectId(versionId)
                 }
             },
-            { new: true, runValidators: true }
+            { returnDocument: "after", runValidators: true }
         );
 
         if (!bank) {

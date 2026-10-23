@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const mongoose = require("mongoose");
 const QuestionVersion = require("../models/question-version.model");
 const QuestionBank = require("../models/question-bank.model");
@@ -457,7 +457,7 @@ router.post("/:id/share", async (req, res) => {
                 }
             },
             {
-                new: true,
+                returnDocument: "after",
                 runValidators: true
             }
         );
@@ -573,7 +573,7 @@ router.post("/:id/use", async (req, res) => {
                 $inc: { __v: 1 }
             },
             {
-                new: true,
+                returnDocument: "after",
                 runValidators: true
             }
         );

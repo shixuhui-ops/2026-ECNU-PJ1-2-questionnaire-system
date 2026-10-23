@@ -1,0 +1,209 @@
+const assert = require("node:assert/strict");
+
+const baseUrl = process.env.API_BASE_URL || "http://127.0.0.1:3000/api";
+const username = `version_tester_${Date.now()}`;
+const password = "123456";
+
+async function request(path, options = {}) {
+    const response = await fetch(`${baseUrl}${path}`, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        }
+    });
+
+    const body = await response.json();
+
+    if (!response.ok) {
+        const error = new Error(
+            `${response.status}: ${JSON.stringify(body)}`
+        );
+        error.status = response.status;
+        error.body = body;
+        throw error;
+    }
+
+    return body;
+}
+
+async function run() {
+    const register = await request("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+    });
+
+    assert.equal(register.success, true);
+    const token = register.data.token;
+    const authHeaders = {
+        Authorization: `Bearer ${token}`
+    };
+
+    const contentV1 = {
+        type: "single",
+        title: "版本测试题 v1",
+        required: true,
+        options: [
+            { label: "选项A", value: "A" },
+            { label: "选项B", value: "B" }
+        ]
+    };
+
+    const created = await request("/question-versions", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ content: contentV1 })
+    });
+
+    assert.equal(created.success, true);
+    assert.equal(created.data.version, 1);
+    assert.deepEqual(
+        created.data.content.options.map(({ label, value }) => ({ label, value })),
+        contentV1.options
+    );
+
+    const version1Id = created.data._id;
+    const familyId = String(created.data.familyId);
+
+    const contentV2 = {
+        ...contentV1,
+        title: "版本测试题 v2"
+    };
+
+    const updated = await request(
+        `/question-versions/${version1Id}/versions`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+                content: contentV2,
+                changeNote: "修改题目标题"
+            })
+        }
+    );
+
+    assert.equal(updated.success, true);
+    assert.equal(updated.data.version, 2);
+    assert.equal(String(updated.data.familyId), familyId);
+    assert.equal(String(updated.data.parentVersionId), String(version1Id));
+    assert.equal(updated.data.content.title, "版本测试题 v2");
+
+    const version2Id = updated.data._id;
+
+    const history = await request(
+        `/question-versions/${version2Id}/history`,
+        { headers: authHeaders }
+    );
+
+    assert.equal(history.success, true);
+    assert.equal(String(history.data.familyId), familyId);
+    assert.equal(history.data.versions.length, 2);
+    assert.deepEqual(
+        history.data.versions.map((item) => item.version),
+        [1, 2]
+    );
+
+    const restored = await request(
+        `/question-versions/${version2Id}/restore`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+                targetVersionId: version1Id,
+                changeNote: "恢复到初始版本"
+            })
+        }
+    );
+
+    assert.equal(restored.success, true);
+    assert.equal(restored.data.version, 3);
+    assert.equal(
+        String(restored.data.restoredFromVersionId),
+        String(version1Id)
+    );
+    assert.equal(
+        String(restored.data.parentVersionId),
+        String(version2Id)
+    );
+    assert.equal(restored.data.content.title, "版本测试题 v1");
+    const snapshotContent = {
+        type: "text",
+        title: "问卷快照原始标题",
+        required: true,
+        validation: {
+            minLength: 1,
+            maxLength: 100
+        }
+    };
+
+    const snapshotVersion = await request("/question-versions", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ content: snapshotContent })
+    });
+
+    const survey = await request("/surveys", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+            title: "题目快照不可变测试"
+        })
+    });
+
+    const surveyId = survey.data._id;
+
+    const usedQuestion = await request(
+        `/question-versions/${snapshotVersion.data._id}/use`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({ surveyId })
+        }
+    );
+
+    assert.equal(usedQuestion.success, true);
+    assert.equal(
+        usedQuestion.data.title,
+        "问卷快照原始标题"
+    );
+    assert.equal(
+        String(usedQuestion.data.sourceQuestionVersionId),
+        String(snapshotVersion.data._id)
+    );
+
+    await request(
+        `/question-versions/${snapshotVersion.data._id}/versions`,
+        {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+                content: {
+                    ...snapshotContent,
+                    title: "题库后续版本标题"
+                },
+                changeNote: "验证问卷快照独立"
+            })
+        }
+    );
+
+    const surveyDetail = await request(`/surveys/${surveyId}`, {
+        headers: authHeaders
+    });
+
+    assert.equal(surveyDetail.success, true);
+    assert.equal(surveyDetail.data.questions.length, 1);
+    assert.equal(
+        surveyDetail.data.questions[0].title,
+        "问卷快照原始标题"
+    );
+    assert.equal(
+        String(surveyDetail.data.questions[0].sourceQuestionVersionId),
+        String(snapshotVersion.data._id)
+    );
+    console.log("题目版本生命周期测试通过");
+}
+
+run().catch((error) => {
+    console.error("题目版本生命周期测试失败：", error.message);
+    process.exitCode = 1;
+});

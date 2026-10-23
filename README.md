@@ -348,7 +348,10 @@ npm --prefix .\backend run test:all
 1. 启动测试 MongoDB
 2. 启动测试后端
 3. 等待健康检查通过
-4. 执行 API 测试
+4. 依次执行 API 自动化测试：
+   - `backend/tests/api.test.js`
+   - `backend/tests/question-version.test.js`
+   - `backend/tests/question-bank.test.js`
 5. 输出测试结果
 6. 清理测试进程
 
@@ -414,7 +417,7 @@ npm run test:e2e
 - 题库题目替换
 - 题库题目移除
 - 旧问卷历史数据保护
-- 第一阶段自动化测试回归
+- 第一、第二阶段 API 自动化测试回归
 
 测试成功输出：
 
