@@ -379,6 +379,48 @@ async function run() {
             }
         ]
     );
+    const otherUsername = `version_viewer_${Date.now()}`;
+    const otherRegister = await request("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+            username: otherUsername,
+            password
+        })
+    });
+
+    const otherHeaders = {
+        Authorization: `Bearer ${otherRegister.data.token}`
+    };
+
+    for (const endpoint of [
+        `/question-versions/${snapshotVersion.data._id}/usages`,
+        `/question-versions/${snapshotVersion.data._id}/statistics`
+    ]) {
+        let accessDenied = false;
+
+        try {
+            await request(endpoint, { headers: otherHeaders });
+        } catch (error) {
+            assert.equal(error.status, 404);
+            accessDenied = true;
+        }
+
+        assert.equal(accessDenied, true);
+    }
+
+    let invalidScopeRejected = false;
+
+    try {
+        await request(
+            `/question-versions/${snapshotVersion.data._id}/statistics?scope=unknown`,
+            { headers: authHeaders }
+        );
+    } catch (error) {
+        assert.equal(error.status, 400);
+        invalidScopeRejected = true;
+    }
+
+    assert.equal(invalidScopeRejected, true);
     console.log("题目版本生命周期测试通过");
 }
 
