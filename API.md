@@ -333,15 +333,7 @@ POST /api/surveys/:id/questions
 | `text` | 文本题 |
 | `number` | 数字题 |
 
-第二阶段增加的来源字段：
-
-```json
-{
-  "sourceQuestionVersionId": "来源题目版本ID或null"
-}
-```
-
-直接在问卷中创建的题目，其来源字段为 `null`；从题目版本选入的题目会保存对应版本 ID。
+第二阶段在问卷题目中增加了 `sourceQuestionVersionId` 字段。直接通过本接口创建题目时，该字段由系统保持为 `null`，请求中不能自行指定来源版本。要从已有版本创建问卷题目，应调用“9.7 将题目版本选入草稿问卷”；系统会复制题目内容，并保存对应的来源版本 ID。
 
 ### 4.6 添加跳转规则
 
@@ -381,6 +373,12 @@ POST /api/surveys/:id/publish
 
 问卷至少包含一道题目后才能发布。问卷发布后不能继续添加题目。
 
+发布成功后，响应中的 `data.accessUrl` 为公开填写地址，格式如下：
+
+```text
+/fill.html?code=<访问码>
+```
+
 ### 4.8 关闭问卷
 
 ```http
@@ -411,12 +409,17 @@ POST /api/surveys/public/:accessCode/next-question
 
 ```json
 {
-  "questionId": "当前题目ID",
-  "value": "freshman"
+  "currentQuestionId": "当前题目ID",
+  "answers": [
+    {
+      "questionId": "当前题目ID",
+      "value": "freshman"
+    }
+  ]
 }
 ```
 
-后端根据题目答案和跳转规则返回下一道题。
+`currentQuestionId` 表示当前题目；`answers` 表示截至当前已填写的答案。后端根据当前题目的答案和跳转规则返回下一道题。
 
 ---
 

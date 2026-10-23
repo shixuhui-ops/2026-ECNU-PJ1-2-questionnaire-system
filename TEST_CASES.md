@@ -8,7 +8,7 @@
 2. 浏览器冒烟测试和端到端测试
 3. 第二阶段题库、题目版本、共享复用与跨问卷统计检查
 
-完整自动化测试命令（包含第一阶段回归、题目版本生命周期和题库共享权限测试）：
+完整自动化测试命令包含第一阶段 API 回归、第二阶段 API 测试、浏览器冒烟测试和第二阶段题库浏览器端到端测试：
 
 ```powershell
 npm --prefix .\backend run test:all
@@ -18,6 +18,10 @@ npm --prefix .\backend run test:all
 
 ```text
 所有自动化测试通过
+题目版本生命周期测试通过
+题库创建、加入和共享测试通过
+浏览器端冒烟测试通过
+第二阶段题库浏览器端到端测试通过
 ```
 
 前端脚本语法检查：
@@ -33,7 +37,13 @@ node --check .\frontend\question-bank.js
 - `backend/tests/question-version.test.js`：题目版本创建、并发版本号唯一性与历史连续性、版本历史、恢复关系、问卷快照不可变性、题目使用情况、真实答卷后的跨问卷统计、题目族分版本统计、统计接口权限校验及直接共享访问隔离。
 - `backend/tests/question-bank.test.js`：题库创建、题目加入、共享访问与只读权限、接收者复用共享题目、同题目族版本替换、移除后版本历史及问卷快照保护。
 
-以上脚本已纳入 `npm run test:all`，与第一阶段 API 回归测试在隔离的 MongoDB 和后端环境中依次执行。
+浏览器自动化测试由以下脚本执行：
+
+- `backend/tests/browser-smoke.test.js`：检查首页、管理、填写、统计和题库页面的标题、导航及主要控件。
+- `backend/tests/question-bank-browser.test.js`：通过真实浏览器创建独立数字题、选择草稿问卷、将题目选入问卷，并验证题目快照及 `sourceQuestionVersionId`。
+- `backend/tests/static-server.js`：为一键测试提供隔离的前端静态服务器。
+
+以上脚本均已纳入 `npm run test:all`，在隔离的 MongoDB、后端和前端静态服务器环境中依次执行。
 
 ---
 
@@ -45,7 +55,8 @@ node --check .\frontend\question-bank.js
 | MongoDB 端口 | `27017` | `27018` |
 | 后端端口 | `3000` | `3100` |
 | 数据库名称 | `questionnaire_system` | `questionnaire_system_test` |
-| 前端 | 浏览器或静态服务器 | Playwright |
+| 前端地址 | `http://127.0.0.1:5500` | `http://127.0.0.1:5501` |
+| 浏览器 | Chromium | Playwright Chromium |
 | 操作系统 | Windows | Windows |
 
 主要技术：
@@ -82,10 +93,14 @@ npm --prefix .\backend run test:all
 
 1. 启动隔离的 MongoDB
 2. 启动测试后端
-3. 等待健康检查通过
-4. 执行 API 自动化测试
-5. 输出测试结果
-6. 清理测试进程
+3. 启动测试前端静态服务器
+4. 等待后端健康检查和前端页面响应成功
+5. 执行第一阶段 API 回归测试
+6. 执行第二阶段题目版本和题库 API 测试
+7. 执行浏览器冒烟测试
+8. 执行第二阶段题库浏览器端到端测试
+9. 输出测试结果
+10. 清理 MongoDB、后端和前端测试进程
 
 ### 3.2 使用已经启动的服务测试
 
@@ -100,7 +115,7 @@ npm test
 
 ```powershell
 Set-Location .\backend
-$env:FRONTEND_BASE_URL="http://127.0.0.1:5500/frontend"
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5500"
 npm run test:browser
 ```
 
@@ -110,7 +125,7 @@ npm run test:browser
 
 ```powershell
 Set-Location .\backend
-$env:FRONTEND_BASE_URL="http://127.0.0.1:5500/frontend"
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5500"
 npm run test:e2e
 ```
 
@@ -1381,22 +1396,21 @@ PostgreSQL|postgresql
 
 ### UI-16 将题目选入草稿问卷
 
-测试问卷：
+操作：
 
-```text
-000的阶段二复用测试
-```
+- 打开某个题目版本的管理区域
+- 在草稿问卷下拉列表中选择目标问卷
+- 点击“加入问卷”
 
 预期结果：
 
-- 题目加入草稿问卷
+- 下拉列表只显示当前用户拥有的草稿问卷
+- 题目成功加入所选问卷
 - 问卷题目数量增加
+- 新题目保存来源版本 ID
+- 不需要手工复制或输入问卷 ID
 
 实际结果：通过。
-
-补充说明：
-
-测试过程中连续点击了两次“加入问卷”，因此问卷题目数量增加为 2。后端将每次操作视为独立复用并分别创建快照，属于当前接口行为。
 
 ### UI-17 查看使用情况
 

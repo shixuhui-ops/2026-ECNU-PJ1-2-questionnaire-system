@@ -27,7 +27,7 @@ https://github.com/shixuhui-ops/2026-ECNU-PJ1-2-questionnaire-system
 - 添加题目
 - 配置条件跳转
 - 发布和关闭问卷
-- 生成问卷访问码
+- 生成问卷访问码，并为已发布问卷提供可直接打开的填写链接
 - 查看个人问卷列表
 
 ### 3. 题目类型
@@ -120,6 +120,14 @@ https://github.com/shixuhui-ops/2026-ECNU-PJ1-2-questionnaire-system
 │   │   ├── app.js
 │   │   └── server.js
 │   ├── tests
+│   │   ├── api.test.js
+│   │   ├── browser-e2e.test.js
+│   │   ├── browser-smoke.test.js
+│   │   ├── question-bank-browser.test.js
+│   │   ├── question-bank.test.js
+│   │   ├── question-version.test.js
+│   │   ├── run-all-tests.js
+│   │   └── static-server.js
 │   ├── .env.example
 │   ├── package.json
 │   └── package-lock.json
@@ -346,17 +354,16 @@ npm --prefix .\backend run test:all
 一键测试会自动：
 
 1. 启动测试 MongoDB
-2. 启动测试后端
-3. 等待健康检查通过
-4. 启动隔离的前端静态测试服务器
-5. 依次执行自动化测试：
+2. 启动测试后端和隔离的前端静态测试服务器
+3. 等待后端与前端健康检查通过
+4. 依次执行以下自动化测试：
    - `backend/tests/api.test.js`
    - `backend/tests/question-version.test.js`
    - `backend/tests/question-bank.test.js`
    - `backend/tests/browser-smoke.test.js`
    - `backend/tests/question-bank-browser.test.js`
-6. 输出测试结果
-7. 清理 MongoDB、后端和前端测试进程
+5. 输出测试结果
+6. 清理 MongoDB、后端和前端测试进程
 
 测试环境与正常运行环境隔离：
 
@@ -390,14 +397,14 @@ npx playwright install chromium
 启动前端静态服务器后执行：
 
 ```powershell
-$env:FRONTEND_BASE_URL="http://127.0.0.1:5500/frontend"
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5500"
 npm run test:browser
 ```
 
 端到端测试：
 
 ```powershell
-$env:FRONTEND_BASE_URL="http://127.0.0.1:5500/frontend"
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5500"
 npm run test:e2e
 ```
 
